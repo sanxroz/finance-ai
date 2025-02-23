@@ -2,13 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import Groq from 'groq-sdk';
 import { useExpenseStore } from '../../store/expenseStore';
 import { router, useRouter } from 'expo-router';
 import { useAuth } from '../../context/auth';
 
 export default function ScanScreen() {
   const router = useRouter();
-  const [facing, setFacing] = useState<CameraType>("back");
+  const [facing, setFacing] = useState<CameraType>('back');
   const cameraRef = useRef<CameraView | null>(null);
   const { isPro } = useAuth();
   const { addExpense } = useExpenseStore();
@@ -53,15 +54,68 @@ export default function ScanScreen() {
       return;
     }
 
-    await addExpense({
-      amount: 25.99,
-      category: 'Food',
-      date: new Date().toISOString(),
-      note: 'Scanned receipt',
-      imageUri,
-    });
+    try {
+      const groq = new Groq({ apiKey: process.env.EXPO_PUBLIC_GROQ_API_KEY });
 
-    router.replace('/');
+      // Convert image to base64 and create prompt
+      const response = await fetch(imageUri);
+      console.log('response', response);
+      const blob = await response.blob();
+      console.log('blob', blob);
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            resolve(reader.result.split(',')[1]); // Get only the base64 part
+          } else {
+            reject(new Error('Failed to convert to base64'));
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/jpeg;base64,${base64}`,
+                },
+              },
+              {
+                type: 'text',
+                text: 'get the category of the expense, the name of the place and the amount of the expense, always return in a JSON format [SCHEMA] {"category": string, "name": string, "amount": number}',
+              },
+            ],
+          },
+        ],
+        model: 'llama-3.2-11b-vision-preview',
+        response_format: { type: 'json_object' },
+      });
+
+      const result = chatCompletion.choices[0].message.content;
+      console.log('result', result);
+      const json = JSON.parse(result);
+      const amount = json.amount;
+      const category = json.category;
+      const name = json.name;
+
+      await addExpense({
+        amount,
+        category,
+        date: new Date().toISOString(),
+        note: name,
+        imageUri,
+      });
+
+      router.replace('/');
+    } catch (error) {
+      console.error('Error processing receipt:', error);
+    }
   };
 
   if (!permission) {
