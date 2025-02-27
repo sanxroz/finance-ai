@@ -1,12 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity } from 'react-native';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { BlurView } from 'expo-blur';
+import { useAuth } from '../../context/auth';
 
 const { width } = Dimensions.get('window');
 
 export default function OnboardingScreen() {
+  const { login, hasCompletedOnboarding } = useAuth();
+  
+  const handleComplete = () => {
+    // In a real app, you would update the onboarding status
+    login('user@example.com', 'password');
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -24,9 +32,9 @@ export default function OnboardingScreen() {
           <Feature icon="🏷️" text="Auto-categorization" />
           <Feature icon="📊" text="Detailed analytics" />
         </View>
-        <Link href="/(auth)/login" style={styles.button}>
+        <TouchableOpacity style={styles.button} onPress={handleComplete}>
           <Text style={styles.buttonText}>Get Started</Text>
-        </Link>
+        </TouchableOpacity>
       </BlurView>
     </View>
   );

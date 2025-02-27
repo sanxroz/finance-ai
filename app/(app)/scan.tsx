@@ -1,5 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import Groq from 'groq-sdk';
@@ -14,6 +20,7 @@ export default function ScanScreen() {
   const { isPro } = useAuth();
   const { addExpense } = useExpenseStore();
   const [permission, requestPermission] = useCameraPermissions();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     (async () => {
@@ -54,6 +61,7 @@ export default function ScanScreen() {
       return;
     }
 
+    setIsLoading(true);
     try {
       const groq = new Groq({ apiKey: process.env.EXPO_PUBLIC_GROQ_API_KEY });
 
@@ -88,7 +96,7 @@ export default function ScanScreen() {
               },
               {
                 type: 'text',
-                text: 'get the category of the expense, the name of the place and the amount of the expense, always return in a JSON format [SCHEMA] {"category": string, "name": string, "amount": number}',
+                text: 'first think step by step, is this a bill? if its not a bill, return the json with all nulls if its a bill or an expense or a ticket. get the category of the expense, the name of the place and the amount of the expense, always return in a JSON format [SCHEMA] {"category": string, "name": string, "amount": number}',
               },
             ],
           },
@@ -104,6 +112,14 @@ export default function ScanScreen() {
       const category = json.category;
       const name = json.name;
 
+      console.log('amount', amount);
+      console.log('category', category);
+      console.log('name', name);
+
+      if (!amount || !category || !name || amount <= 0) {
+        return;
+      }
+
       await addExpense({
         amount,
         category,
@@ -115,6 +131,8 @@ export default function ScanScreen() {
       router.replace('/');
     } catch (error) {
       console.error('Error processing receipt:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -128,16 +146,23 @@ export default function ScanScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button} onPress={pickImage}>
-            <Text style={styles.buttonText}>Pick from Gallery</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
-            <View style={styles.captureInner} />
-          </TouchableOpacity>
-        </View>
-      </CameraView>
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#0000ff" />
+      ) : (
+        <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.button} onPress={pickImage}>
+              <Text style={styles.buttonText}>Pick from Gallery</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.captureButton}
+              onPress={takePicture}
+            >
+              <View style={styles.captureInner} />
+            </TouchableOpacity>
+          </View>
+        </CameraView>
+      )}
     </View>
   );
 }
@@ -145,6 +170,8 @@ export default function ScanScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   camera: {
     flex: 1,

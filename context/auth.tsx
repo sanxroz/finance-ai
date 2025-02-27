@@ -2,9 +2,10 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 
-interface AuthContextType {
+export interface AuthContextType {
   isAuthenticated: boolean;
   isPro: boolean;
+  hasCompletedOnboarding: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   upgradeToProVersion: () => Promise<void>;
@@ -15,6 +16,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
   useEffect(() => {
     checkAuthStatus();
@@ -24,14 +26,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const token = await SecureStore.getItemAsync('userToken');
       const proStatus = await SecureStore.getItemAsync('proStatus');
+      const onboardingCompleted = await SecureStore.getItemAsync('onboardingCompleted');
       
       setIsAuthenticated(!!token);
       setIsPro(proStatus === 'true');
+      setHasCompletedOnboarding(onboardingCompleted === 'true');
 
       if (!token) {
+        router.replace('/(auth)/login');
+      } else if (!onboardingCompleted) {
         router.replace('/(onboarding)');
       } else {
-        router.replace('/(app)/(tabs)');
+        router.replace('/(app)');
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
@@ -42,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // In a real app, validate credentials against a backend
     await SecureStore.setItemAsync('userToken', 'dummy-token');
     setIsAuthenticated(true);
-    router.replace('/(app)/(tabs)');
+    router.replace('/(app)');
   }
 
   async function logout() {
@@ -60,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       isAuthenticated,
       isPro,
+      hasCompletedOnboarding,
       login,
       logout,
       upgradeToProVersion,

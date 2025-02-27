@@ -17,6 +17,7 @@ export default function AppLayout() {
         name="index"
         options={{
           title: 'Home',
+          headerShown: false,
           tabBarIcon: ({ size, color }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -26,6 +27,7 @@ export default function AppLayout() {
         name="scan"
         options={{
           title: 'Scan',
+          headerShown: false,
           tabBarIcon: ({ size, color }) => (
             <Ionicons name="scan" size={size} color={color} />
           ),
@@ -35,6 +37,7 @@ export default function AppLayout() {
         name="settings"
         options={{
           title: 'Settings',
+          headerShown: false,
           tabBarIcon: ({ size, color }) => (
             <Ionicons name="settings" size={size} color={color} />
           ),

@@ -26,7 +26,6 @@ export default function SettingsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
         {!isPro && (
           <TouchableOpacity style={styles.upgradeButton} onPress={handleUpgrade}>
             <View style={styles.upgradeContent}>
